@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "endstone-bgshop"
+version = "1.0.0"
+description = "BGSHOP - ปลั๊กอินร้านค้าหลายร้านสำหรับ Endstone (เชื่อมต่อ EconomyCore, หักได้ทั้งเงินและพอยต์, permission รายร้าน)"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "BG" }]
+dependencies = []
+
+[project.entry-points."endstone"]
+# entry point group "endstone" -> ชี้ไปยังคลาส Plugin หลัก
+bgshop = "endstone_bgshop:BGShop"
+
+[tool.setuptools.packages.find]
+where = ["src"]
