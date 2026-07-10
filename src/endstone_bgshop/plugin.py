@@ -216,17 +216,50 @@ class BGShop(Plugin):
         return None
 
     # ================================================================== #
+    #  ตัวช่วยหา Player จาก sender (รองรับ NPC / CommandSenderWrapper)
+    # ================================================================== #
+    def _resolve_player(self, sender) -> Player | None:
+        """พยายามดึง Player จาก sender ไม่ว่าจะเป็นชนิดใด
+
+        1. sender เป็น Player อยู่แล้ว → ใช้เลย
+        2. sender เป็น wrapper → ลองดึงชื่อแล้วหาผู้เล่นจาก server.get_player()
+        3. หาไม่เจอ → คืน None
+        """
+        if isinstance(sender, Player):
+            return sender
+
+        # sender อาจเป็น CommandSenderWrapper หรือ NPC entity
+        # ลองหาผู้เล่นจากชื่อของ sender
+        try:
+            name = sender.name
+            if name:
+                player = self.server.get_player(name)
+                if player is not None:
+                    return player
+        except Exception:  # noqa: BLE001
+            pass
+
+        # fallback: ถ้ามี attribute ที่ชี้ไปหา player ตัวจริง
+        for attr in ("player", "sender", "_sender", "source"):
+            inner = getattr(sender, attr, None)
+            if isinstance(inner, Player):
+                return inner
+
+        return None
+
+    # ================================================================== #
     #  การจัดการคำสั่ง
     # ================================================================== #
     def on_command(self, sender, command, args) -> bool:
         name = command.name.lower()
 
         if name == "shop":
-            # /shop ต้องเป็นผู้เล่นเท่านั้น
-            if not isinstance(sender, Player):
+            # พยายามหา Player จาก sender (รองรับ NPC / wrapper)
+            player = self._resolve_player(sender)
+            if player is None:
                 sender.send_error_message("คำสั่งนี้ใช้ได้เฉพาะผู้เล่นในเกมเท่านั้น")
                 return True
-            self.open_shop_selector(sender)
+            self.open_shop_selector(player)
             return True
 
         if name == "bgshop":
@@ -358,10 +391,11 @@ class BGShop(Plugin):
 
         if len(rest) == 3:
             # ---- จากไอเทมในมือ ----
-            if not isinstance(sender, Player):
+            player = self._resolve_player(sender)
+            if player is None:
                 sender.send_error_message("รูปแบบนี้ต้องใช้ในเกม (ต้องถือไอเทมในมือ)")
                 return
-            held = sender.inventory.item_in_main_hand
+            held = player.inventory.item_in_main_hand
             if held is None or held.type is None:
                 sender.send_error_message("คุณต้องถือไอเทมที่จะเพิ่มไว้ในมือก่อน")
                 return
